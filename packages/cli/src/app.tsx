@@ -111,7 +111,7 @@ function AppContent({ asciiMode, dryRun }: AppProps) {
 
   // Combat
   const combatHook = useCombatState(settings.skipEnemyAnimation);
-  const { combat, selectedCard, targetColumn, message, emplaceMode, animating, selectCard, selectTarget, confirmPlay, endTurn, toggleEmplace, startCombat, applyPotion: _applyPotion, needsTarget, isFirstCardFree } = combatHook;
+  const { combat, selectedCard, targetColumn, message, emplaceMode, animating, selectCard, selectTarget, confirmPlay, endTurn, toggleEmplace, startCombat, applyPotion: _applyPotion, needsTarget, isFirstCardFree, skipAnimation } = combatHook;
   // Inspect mode
   const [inspectMode, setInspectMode] = useState(false);
   const [inspectCol, setInspectCol] = useState(0);
@@ -858,7 +858,10 @@ function AppContent({ asciiMode, dryRun }: AppProps) {
     }
 
     if (screen === 'combat' && combat) {
-      if (animating) return;
+      if (animating) {
+        skipAnimation();
+        if (input === ' ' || combat.outcome !== 'undecided') return;
+      }
       if (combat.outcome !== 'undecided') {
         if (key.return || input === ' ') afterCombat();
         return;

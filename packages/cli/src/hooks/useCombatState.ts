@@ -9,6 +9,7 @@ export interface UseCombatStateReturn {
   targetColumn: number;
   message: string;
   emplaceMode: boolean;
+  skipAnimation: () => void;
   animating: boolean;
   selectCard: (index: number) => void;
   selectTarget: (col: number) => void;
@@ -56,47 +57,40 @@ export function useCombatState(skipEnemyAnimation = false): UseCombatStateReturn
   const combatRef = useRef<CombatState | null>(null);
   const targetColumnRef = useRef(2);
 
+  const skipAnimation = useCallback(() => {
+    setAnimQueue([]);
+    setAnimating(false);
+    const state = combatRef.current;
+    if (state) {
+      if (state.outcome === 'win') {
+        setMessage('Victory! The Pale recedes.');
+      } else if (state.outcome === 'lose') {
+        setMessage('The Gate has fallen...');
+      } else {
+        setMessage(`Turn ${state.turn}. Your move.`);
+      }
+    }
+  }, []);
+
   useEffect(() => {
     if (!animating || animQueue.length === 0) return;
 
     if (skipEnemyAnimation) {
-      setMessage(animQueue[animQueue.length - 1]);
-      setAnimQueue([]);
-      setAnimating(false);
-      const state = combatRef.current;
-      if (state) {
-        if (state.outcome === 'win') {
-          setMessage('Victory! The Pale recedes.');
-        } else if (state.outcome === 'lose') {
-          setMessage('The Gate has fallen...');
-        } else {
-          setMessage(`Turn ${state.turn}. Your move.`);
-        }
-      }
+      skipAnimation();
       return;
     }
 
     const timer = setTimeout(() => {
       const [current, ...rest] = animQueue;
-      setMessage(current);
       if (rest.length === 0) {
-        setAnimating(false);
-        const state = combatRef.current;
-        if (state) {
-          if (state.outcome === 'win') {
-            setMessage('Victory! The Pale recedes.');
-          } else if (state.outcome === 'lose') {
-            setMessage('The Gate has fallen...');
-          } else {
-            setMessage(`Turn ${state.turn}. Your move.`);
-          }
-        }
+        skipAnimation();
       } else {
+        setMessage(current);
         setAnimQueue(rest);
       }
     }, ANIM_STEP_MS);
     return () => clearTimeout(timer);
-  }, [animating, animQueue, skipEnemyAnimation]);
+  }, [animating, animQueue, skipEnemyAnimation, skipAnimation]);
 
   const startCombat = useCallback((
     deck?: CardInstance[],
@@ -348,6 +342,7 @@ export function useCombatState(skipEnemyAnimation = false): UseCombatStateReturn
     message,
     emplaceMode,
     animating,
+    skipAnimation,
     selectCard,
     selectTarget,
     confirmPlay,

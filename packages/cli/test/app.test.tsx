@@ -10,10 +10,12 @@ import { Box, Text, useInput } from 'ink';
 import { getCardDef } from '@codekeep/shared';
 function CombatHarness({
   onReady,
+  skipEnemyAnimation = true,
 }: {
   onReady?: (hook: ReturnType<typeof useCombatState>) => void;
+  skipEnemyAnimation?: boolean;
 }) {
-  const hook = useCombatState(true);
+  const hook = useCombatState(skipEnemyAnimation);
   const [confirmEndTurn, setConfirmEndTurn] = React.useState(false);
   React.useEffect(() => {
     if (!hook.combat) {
@@ -28,6 +30,10 @@ function CombatHarness({
 
   useInput((input, key) => {
     if (!hook.combat) return;
+    if (hook.animating) {
+      hook.skipAnimation();
+      if (input === ' ' || hook.combat.outcome !== 'undecided') return;
+    }
     if (hook.combat.outcome !== 'undecided') {
       if (key.return || input === ' ') setConfirmEndTurn(false);
       return;
@@ -232,6 +238,32 @@ describe('App', () => {
     expect(lastFrame()).toContain(`${resolveAfterFirst - 1} Resolve left.`);
     expect(latestHook!.combat!.resolve).toBe(resolveAfterFirst - 1);
     expect(lastFrame()).not.toContain('Not enough Resolve');
+    unmount();
+  });
+  it('skips remaining enemy animation when player starts an action', async () => {
+    let latestHook: ReturnType<typeof useCombatState> | null = null;
+    const { stdin, lastFrame, unmount } = render(
+      <CombatHarness skipEnemyAnimation={false} onReady={(h) => { latestHook = h; }} />,
+    );
+    for (let i = 0; i < 40 && !latestHook?.combat; i++) {
+      await delay(TICK_MS);
+    }
+    expect(latestHook?.combat).toBeTruthy();
+
+    stdin.write(' ');
+    await delay(TICK_MS);
+    if (lastFrame()!.includes('Press Space again')) {
+      stdin.write(' ');
+      await delay(TICK_MS);
+    }
+    expect(latestHook!.animating).toBe(true);
+    expect(latestHook!.combat!.turn).toBe(2);
+
+    // Pressing '1' during animation skips the remaining delay and selects card 1 immediately
+    stdin.write('1');
+    await delay(TICK_MS);
+    expect(latestHook!.animating).toBe(false);
+    expect(latestHook!.selectedCard).toBe(0);
     unmount();
   });
 });
