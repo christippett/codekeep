@@ -10,7 +10,8 @@
     "test": "turbo test",
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
-    "play": "pnpm --filter codekeep dev"
+    "play": "pnpm --filter codekeep dev",
+    "build:exe": "node scripts/build-standalone.mjs --bun"
   },
   "devDependencies": {
     "esbuild": "^0.27.4",
